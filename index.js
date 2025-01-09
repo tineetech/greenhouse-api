@@ -32,6 +32,32 @@ app.post('/', (req, res) => {
     })
 })
 
+app.get('/api/get-transaction/:id', async (req, res) => {
+  try {
+    const id = req.params.id
+    const serverKey = process.env.MIDTRANS_SERVER_KEY; 
+    const authHeader = `Basic ${Buffer.from(`${serverKey}:`).toString('base64')}`;
+
+    const response = await fetch(`https://api.sandbox.midtrans.com/v2/${id}/status`, {
+      method: "GET",
+      headers: {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "Authorization": authHeader
+      }
+    })
+    if (response.ok) {
+      const data = await response.json();
+      res.status(200).json(data); // Kirim data ke klien
+    } else {
+      const errorData = await response.json();
+      res.status(response.status).json(errorData); // Kirim error dari API Midtrans
+    }
+  } catch (error) {
+    res.send(400).json({mess: "not found"})
+  }
+})
+
 app.post('/api/create-transaction', async (req, res) => {
   try {
     const { idOrder, productId, productName, price, totals, qty, userId, userName } = req.body;
