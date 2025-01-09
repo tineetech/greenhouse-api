@@ -35,11 +35,12 @@ app.post('/', (req, res) => {
 app.post('/api/create-transaction', async (req, res) => {
   try {
     const { idOrder, productId, productName, price, totals, qty, userId, userName } = req.body;
+    const grossAmount = parseInt(price) * parseInt(qty);
 
     const parameter = {
       transaction_details: {
         order_id: idOrder,
-        gross_amount: parseInt(totals),
+        gross_amount: grossAmount,
       },
       item_details: [
         {
@@ -51,7 +52,7 @@ app.post('/api/create-transaction', async (req, res) => {
       ],
       customer_details: {
         first_name: userName,
-        email: `${userId}@example.com`, // Ganti dengan email aktual
+        email: `${userName}@example.com`, // Ganti dengan email aktual
       },
     };
 
