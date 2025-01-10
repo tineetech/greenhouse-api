@@ -59,20 +59,44 @@ app.get('/api/get-transaction/:id', async (req, res) => {
 
 app.post('/api/create-transaction', async (req, res) => {
   try {
-    const { idOrder, productId, productName, price, totals, qty, userId, userName } = req.body;
-    const grossAmount = (parseInt(price) * parseInt(qty)) +  + (find.price * (11 / 100)) + (find.price * (2 / 100));
+    const { idOrder, productId, productName, price, qty, userId, userName } = req.body;
+
+    const parsedPrice = parseInt(price);
+    const parsedQty = parseInt(qty);
+
+    // Hitung total harga item
+    const itemTotal = parsedPrice * parsedQty;
+
+    // Hitung pajak dan biaya layanan
+    const taxAmount = itemTotal * (11 / 100); // 11% pajak
+    const serviceCharge = itemTotal * (2 / 100); // 2% biaya layanan
+
+    // Hitung gross amount
+    const grossAmount = itemTotal + taxAmount + serviceCharge;
 
     const parameter = {
       transaction_details: {
         order_id: idOrder,
-        gross_amount: grossAmount,
+        gross_amount: grossAmount, // Harus sama dengan total item_details
       },
       item_details: [
         {
           id: productId,
-          price: parseInt(price),
-          quantity: parseInt(qty),
+          price: parsedPrice,
+          quantity: parsedQty,
           name: productName,
+        },
+        {
+          id: 'tax',
+          price: Math.round(taxAmount), // Pajak
+          quantity: 1,
+          name: 'Tax (11%)',
+        },
+        {
+          id: 'service_charge',
+          price: Math.round(serviceCharge), // Biaya layanan
+          quantity: 1,
+          name: 'Service Charge (2%)',
         },
       ],
       customer_details: {
@@ -85,9 +109,10 @@ app.post('/api/create-transaction', async (req, res) => {
     res.status(200).json({ token: transaction.token, redirect_url: transaction.redirect_url });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Failed to create transaction' });
+    res.status(500).json({ error: 'Failed to create transaction', details: error.message });
   }
 });
+
 
 app.get('/api/confirm-payment', async (req, res) => {
   try {
