@@ -2,11 +2,9 @@ import express from "express"
 import cors from "cors"
 import midtransClient from "midtrans-client"
 import dotenv from "dotenv";
-dotenv.config(); 
+// import admin from "firebase-admin"
 
-// const express = require('express');
-// const cors = require('cors');
-// const midtransClient = require('midtrans-client');
+dotenv.config(); 
 
 const app = express();
 const port = 3000;
@@ -17,6 +15,7 @@ const snap = new midtransClient.Snap({
   isProduction: false,
   serverKey: process.env.MIDTRANS_SERVER_KEY,
 });
+
 
 app.get('/', (req, res) => {
     res.status(200).json({
@@ -30,6 +29,32 @@ app.post('/', (req, res) => {
     res.status(200).json({
         status: "success"
     })
+})
+
+app.get('/api/get-transaction/:id', async (req, res) => {
+  try {
+    const id = req.params.id
+    const serverKey = process.env.MIDTRANS_SERVER_KEY; 
+    const authHeader = `Basic ${Buffer.from(`${serverKey}:`).toString('base64')}`;
+
+    const response = await fetch(`https://api.sandbox.midtrans.com/v2/${id}/status`, {
+      method: "GET",
+      headers: {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "Authorization": authHeader
+      }
+    })
+    if (response.ok) {
+      const data = await response.json();
+      res.status(200).json(data); // Kirim data ke klien
+    } else {
+      const errorData = await response.json();
+      res.status(response.status).json(errorData); // Kirim error dari API Midtrans
+    }
+  } catch (error) {
+    res.send(400).json({mess: "not found"})
+  }
 })
 
 app.post('/api/create-transaction', async (req, res) => {
@@ -63,6 +88,70 @@ app.post('/api/create-transaction', async (req, res) => {
     res.status(500).json({ error: 'Failed to create transaction' });
   }
 });
+
+app.get('/api/confirm-payment', async (req, res) => {
+  try {
+    const { order_id } = req.query;
+
+    if (!order_id) {
+      return res.status(400).json({ mess: 'order_id is required' });
+    }
+    const transactionStatus = await snap.transaction.status(order_id);
+
+    if (transactionStatus && transactionStatus.transaction_status === "settlement") {
+      const resFb = await fetch('https://greenhousez-default-rtdb.firebaseio.com/orders.json');
+      
+      if (resFb.ok) {
+        const firebaseData = await resFb.json(); // Data dari Firebase, biasanya berupa objek
+    
+        // Konversi data Firebase menjadi array untuk menggunakan metode `find`
+        const firebaseArray = Object.values(firebaseData || {}).map((item, index) => ({
+          ...item,
+          _key: Object.keys(firebaseData || [])[index], // Tambahkan kunci untuk referensi jika diperlukan
+        }));
+    
+        // Cari data berdasarkan `order_id`
+        const find = firebaseArray.find((item) => item.id_order === order_id);
+    
+        if (find && find.status !== "success") {
+          const update = await fetch("https://greenhousez-default-rtdb.firebaseio.com/orders/" + find._key + ".json", {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ status: "success" })
+          })
+
+          if (update.ok) {
+            return res.status(200).json({
+              message: 'Data status firebase updated',
+              data: update,
+              code: 200
+            })
+          }
+          return res.status(200).json({
+            message: 'Data got it',
+            data: find,
+          });
+        } else {
+          return res.status(404).json({
+            message: 'Data found, but status is already success',
+          });
+        }
+      } else {
+        return res.status(500).json({
+          message: 'Failed to fetch data from Firebase',
+          error: await resFb.text(),
+        });
+      }
+    } else {
+      res.status(500).json({ mess: "data found, but the status transaction is not success, please finish the payment." })
+    }
+    
+    } catch (error) {
+    res.status(500).json({ mess: "error failed to fetch" })
+  }
+})
 
 app.listen(port, () => {
   console.log('Server running on http://localhost:' + port);
