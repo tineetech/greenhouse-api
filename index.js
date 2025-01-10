@@ -60,7 +60,7 @@ app.get('/api/get-transaction/:id', async (req, res) => {
 app.post('/api/create-transaction', async (req, res) => {
   try {
     const { idOrder, productId, productName, price, totals, qty, userId, userName } = req.body;
-    const grossAmount = parseInt(price) * parseInt(qty);
+    const grossAmount = (parseInt(price) * parseInt(qty)) +  + (find.price * (11 / 100)) + (find.price * (2 / 100));
 
     const parameter = {
       transaction_details: {
