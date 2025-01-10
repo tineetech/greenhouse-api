@@ -59,10 +59,11 @@ app.get('/api/get-transaction/:id', async (req, res) => {
 
 app.post('/api/create-transaction', async (req, res) => {
   try {
-    const { idOrder, productId, productName, price, qty, userId, userName } = req.body;
+    const { idOrder, productId, productName, price, qty, userId, userName, discPrice } = req.body;
 
     const parsedPrice = parseInt(price);
     const parsedQty = parseInt(qty);
+    const parsedDiscPrice = discPrice ? parseInt(discPrice) : 0;
 
     // Hitung total harga item
     const itemTotal = parsedPrice * parsedQty;
@@ -72,7 +73,14 @@ app.post('/api/create-transaction', async (req, res) => {
     const serviceCharge = itemTotal * (2 / 100); // 2% biaya layanan
 
     // Hitung gross amount
-    const grossAmount = itemTotal + taxAmount + serviceCharge;
+    var grossAmount = itemTotal + taxAmount + serviceCharge;
+
+    if (parsedDiscPrice > 0) {
+      if (parsedDiscPrice > grossAmount) {
+        throw new Error("Discount price cannot be greater than the total amount.");
+      }
+      grossAmount -= parsedDiscPrice;
+    }
 
     const parameter = {
       transaction_details: {
@@ -98,6 +106,16 @@ app.post('/api/create-transaction', async (req, res) => {
           quantity: 1,
           name: 'Service Charge (2%)',
         },
+        ...(parsedDiscPrice > 0
+          ? [
+              {
+                id: 'discount',
+                price: -Math.round(parsedDiscPrice), // Diskon harus bernilai negatif
+                quantity: 1,
+                name: 'Discount',
+              },
+            ]
+          : []),
       ],
       customer_details: {
         first_name: userName,
