@@ -123,18 +123,14 @@ app.get('/api/confirm-payment', async (req, res) => {
           })
 
           if (update.ok) {
-            return res.status(200).json({
-              message: 'Data status firebase updated',
-              data: update,
-              code: 200
-            })
+            return res.redirect('https://greenhousez.web.app/payment/' + order_id);
           }
           return res.status(200).json({
             message: 'Data got it',
             data: find,
           });
         } else {
-          return res.status(404).json({
+           res.status(404).json({
             message: 'Data found, but status is already success',
           });
         }
@@ -145,11 +141,11 @@ app.get('/api/confirm-payment', async (req, res) => {
         });
       }
     } else {
-      res.status(500).json({ mess: "data found, but the status transaction is not success, please finish the payment." })
+      res.status(500).json({ mess: "data order not found in midtrans." })
     }
     
     } catch (error) {
-    res.status(500).json({ mess: "error failed to fetch" })
+    res.status(500).json({ mess: "error failed to fetch midtrans or data not found" })
   }
 })
 
