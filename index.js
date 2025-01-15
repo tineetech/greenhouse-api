@@ -162,7 +162,7 @@ app.get('/api/confirm-payment', async (req, res) => {
             headers: {
               "Content-Type": "application/json"
             },
-            body: JSON.stringify({ status: "success" })
+            body: JSON.stringify({ status: "shipping" })
           })
 
           if (update.ok) {
