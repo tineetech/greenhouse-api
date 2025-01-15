@@ -156,7 +156,7 @@ app.get('/api/confirm-payment', async (req, res) => {
         // Cari data berdasarkan `order_id`
         const find = firebaseArray.find((item) => item.id_order === order_id);
     
-        if (find && find.status !== "success") {
+        if (find && find.status !== "shipping") {
           const update = await fetch("https://greenhousez-default-rtdb.firebaseio.com/orders/" + find._key + ".json", {
             method: "PATCH",
             headers: {
